@@ -1,0 +1,54 @@
+[package]
+name = "certval_stores_mozilla"
+version = "0.1.0"
+edition = "2021"
+description = "Mozilla root program trust store for certval, generated from CCADB and verified against NSS certdata.txt"
+license = "MPL-2.0"
+
+[dependencies]
+# The provider trait and the certval/reqwest plumbing, shared with the
+# certval_stores_* family. default-features = false keeps the HTTP stack behind
+# this crate's own `reqwest-client` switch.
+certval_stores_core = { git = "https://github.com/carl-wallace/certval-stores.git", default-features = false, branch = "main" }
+
+[dev-dependencies]
+certval_stores_core = { git = "https://github.com/carl-wallace/certval-stores.git", features = ["test-util"], branch = "main" }
+# `rsa` because 118 of the 172 roots are RSA-signed: without it certval's
+# signature verification returns Unrecognized rather than failing loudly, and
+# the conformance suite would pass while checking nothing.
+certval = { git = "https://github.com/carl-wallace/rust-pki.git", features = ["std", "rsa"], branch = "main" }
+# Versions tracked to certval's, so the OIDs and digests the tests use are the
+# same types certval works with rather than a second copy of them.
+const-oid = { version = "0.10.2", features = ["db"] }
+sha2 = "0.11.0"
+
+[features]
+default = ["mozilla_tls", "reqwest-client"]
+# Forwards the core crate's client switch. Without this a consumer could not
+# turn the HTTP stack off: features are additive, so this crate enabling the
+# core default would re-enable it however the consumer configured core.
+reqwest-client = ["certval_stores_core/reqwest-client"]
+# Roots carrying the Websites trust bit — TLS server authentication. The same
+# population webpki-roots serves.
+mozilla_tls = []
+# Roots carrying the Email trust bit — S/MIME.
+mozilla_email = []
+# Every root Mozilla trusts for either purpose, in one environment, for a
+# consumer that validates both kinds of certificate against one anchor set.
+mozilla_all = []
+# Embed the intermediate-CA store: 2,560 CCADB-disclosed intermediates plus the
+# precomputed partial-path graph, so paths build offline with no AIA fetch and
+# no chain from a peer. 6.6 MB, hence off by default. Implies `mozilla_all`
+# because that is the environment it attaches to — see the MozillaStores docs
+# for why it is not offered per purpose.
+mozilla_cas = ["mozilla_all"]
+
+# `certval` and its RustCrypto dependencies are consumed from git, so this patch
+# table is required for this crate to build standalone (its own CI). When it is
+# consumed by a larger workspace, that workspace's own [patch] table governs and
+# this one is ignored. Only the formats 0.3-pre line lacks a crates.io release
+# and is internally git-coupled (cms/x509-cert/x509-ocsp pin the stack
+# together), so it stays on git.
+[patch.crates-io]
+cms        = { git = "https://github.com/RustCrypto/formats.git" }
+x509-ocsp  = { git = "https://github.com/RustCrypto/formats.git" }

@@ -1,0 +1,118 @@
+name: certval-stores-mozilla
+
+on:
+  pull_request:
+  push:
+    branches: main
+  schedule:
+    # Daily, for the upstream-drift job below. Mozilla changes the store on its
+    # own schedule; this is how the crate finds out.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: "-Dwarnings"
+
+# No MSRV matrix leg with default features, for the same reason as the
+# certval-stores workspace: reqwest pulls idna -> icu_* 2.2.0, which requires
+# rustc 1.86, so a 1.85 job fails in dependency resolution. The no-client leg
+# below holds certval's own 1.85 floor.
+jobs:
+  build:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: RustCrypto/actions/cargo-hack-install@master
+      # Every environment individually and none: the crate must compile with no
+      # environment features at all, serving nothing.
+      - run: cargo hack build --each-feature
+
+  test:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: RustCrypto/actions/cargo-hack-install@master
+      - run: cargo hack test --each-feature
+
+  # --each-feature never combines features, so the case where all three
+  # environments are live at once — where a duplicate env label or an anchor
+  # collision between them would surface — runs only here.
+  test-combined:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # --all-features is the only leg that exercises the CA store against every
+      # environment at once, and the only one that runs the two expensive checks:
+      # a path built for each of the 2,560 intermediates, and each of those
+      # validated from the anchor down.
+      - run: cargo test --all-features
+
+  # The shape a wasm consumer builds: trust material with no HTTP client, which
+  # is the only shape that compiles there at all (reqwest's wasm backend has no
+  # Certificate or add_root_certificate).
+  build-wasm-no-client:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      # Deliberately without mozilla_cas: the CA store is 6.6 MB, which is not a
+      # payload to put in a wasm bundle. The anchors-only shape is what that
+      # consumer builds.
+      - run: cargo build --no-default-features --features mozilla_tls --target wasm32-unknown-unknown
+
+  build-msrv-no-client:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.85.0 # certval's MSRV
+      - run: cargo build --no-default-features --features mozilla_tls
+
+  fmt:
+    if: github.event_name != 'schedule'
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: rustfmt }
+      - run: cargo fmt --all --check
+
+  clippy:
+    if: github.event_name != 'schedule'
+    name: clippy (-D warnings)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: clippy }
+      # --all-features cannot catch warnings that only exist when a feature is
+      # ABSENT, so the default-feature run is not redundant.
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # The only job that touches the network, and the only one that can fail
+  # because something changed *upstream* rather than here. Scheduled and
+  # manual only: a CCADB or GitHub outage should not block a pull request, but a
+  # store that has drifted from what Firefox ships should be noticed within a
+  # day.
+  upstream-drift:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.x" }
+      - run: python3 tools/verify_against_nss.py

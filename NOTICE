@@ -1,0 +1,51 @@
+certval_stores_mozilla
+Copyright (c) 2026 Carl Wallace
+
+This product is licensed under the Mozilla Public License, Version 2.0.
+A copy of the license accompanies this distribution in the file LICENSE;
+if it does not, one can be obtained at https://mozilla.org/MPL/2.0/.
+
+
+Third-party material
+--------------------
+
+This crate embeds trust material published by the Mozilla Foundation as
+part of the Mozilla Root Store, and redistributes it under the same
+license Mozilla applies to that material in NSS.
+
+  Root certificates, trust bits, and applied constraints
+    Common CA Database (CCADB), operated by Mozilla on Salesforce.
+    https://ccadb.my.salesforce-sites.com/mozilla/IncludedRootCertificateReportPEMCSV
+    Snapshot: 2026-08-13, 172 included roots.
+    Embedded at roots/mozilla/*.der and src/generated.rs.
+
+  Intermediate CA certificates (feature `mozilla_cas`)
+    Common CA Database (CCADB).
+    https://ccadb.my.salesforce-sites.com/mozilla/PublicAllIntermediateCertsWithPEMCSV
+    https://ccadb.my.salesforce-sites.com/mozilla/MozillaIntermediateCertsCSVReport
+    Embedded at cas/mozilla/*.der and cas/mozilla/mozilla.cbor.
+
+  Cross-check source
+    NSS lib/ckfw/builtins/certdata.txt, licensed MPL-2.0, is the
+    authoritative expression of the same root store. tools/verify_against_nss.py
+    checks the embedded certificates and trust bits against it.
+    https://raw.githubusercontent.com/nss-dev/nss/master/lib/ckfw/builtins/certdata.txt
+
+The individual root and intermediate certificates are the works of the
+certification authorities that issued them. Mozilla's contribution, and
+what this crate reproduces, is the selection of those certificates and
+the trust decisions recorded beside them.
+
+CCADB publishes its reports under its own data usage terms, which are
+separate from and additional to the MPL-2.0 terms above. See
+https://www.ccadb.org/ for those terms.
+
+
+Files that cannot carry a license header
+----------------------------------------
+
+The DER certificates under roots/mozilla/ and cas/mozilla/, and the CBOR
+store cas/mozilla/mozilla.cbor, are binary and cannot carry the Exhibit A
+notice in the file itself. As MPL-2.0 Exhibit A permits, the notice is
+placed where a recipient would look for it: README.md in each of those
+directories, and this file.
