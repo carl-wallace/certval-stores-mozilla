@@ -13,7 +13,7 @@
 
 use std::collections::BTreeSet;
 
-use certval::{CertVector, Error, PkiEnvironment, TaSource};
+use certval::{Error, PkiEnvironment, TaSource};
 use certval_stores_core::{conformance, prepare_certval_environment, TrustStoreProvider};
 use certval_stores_mozilla::{find_by_sha256, ALL_ROOTS, EMAIL_ROOTS, PROVIDER, ROOTS, TLS_ROOTS};
 
@@ -136,6 +136,10 @@ fn out_of_band_policy_is_carried_through() {
 #[test]
 #[cfg(feature = "mozilla_tls")]
 fn prepare_environment_accepts_mozilla_tls() {
+    // Brings TaSource::len() into scope; kept local so the module compiles
+    // with no features enabled.
+    use certval::CertVector;
+
     let mut pe = PkiEnvironment::default();
     pe.populate_5280_pki_environment();
     let mut ta_store = TaSource::new();
@@ -148,6 +152,10 @@ fn prepare_environment_accepts_mozilla_tls() {
 #[test]
 #[cfg(feature = "mozilla_email")]
 fn prepare_environment_accepts_mozilla_email() {
+    // Brings TaSource::len() into scope; kept local so the module compiles
+    // with no features enabled.
+    use certval::CertVector;
+
     let mut pe = PkiEnvironment::default();
     pe.populate_5280_pki_environment();
     let mut ta_store = TaSource::new();
@@ -160,6 +168,10 @@ fn prepare_environment_accepts_mozilla_email() {
 #[test]
 #[cfg(feature = "mozilla_all")]
 fn prepare_environment_accepts_mozilla_all() {
+    // Brings TaSource::len() into scope; kept local so the module compiles
+    // with no features enabled.
+    use certval::CertVector;
+
     let mut pe = PkiEnvironment::default();
     pe.populate_5280_pki_environment();
     let mut ta_store = TaSource::new();
