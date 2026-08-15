@@ -140,6 +140,15 @@ Then update `SNAPSHOT` in `tools/refresh.py`, re-run, and update the
 does not linger on disk. Requires the `cryptography` Python package; nothing
 runs at build time, so consumers need neither Python nor network.
 
+If a refresh is interrupted between writing the directory and writing
+`src/generated.rs`, the two can disagree, and only one direction of that shows
+up at build time: a missing `.der` breaks `include_bytes!`, while a leftover one
+ships looking like a root without being in the table.
+`conformance::check_root_inputs` compares the directory against `ROOTS` on every
+test run and fails either way. It is checked against `ROOTS` rather than any
+environment's anchors because the directory holds the whole published population,
+untrusted roots included.
+
 ## Size
 
 The 172 root DER files total ~690 KB and are all embedded regardless of which
