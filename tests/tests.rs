@@ -248,6 +248,30 @@ fn generator_inputs_match_the_store() {
     );
 }
 
+/// The `roots/mozilla/*.der` files reach the crate through the `include_bytes!`
+/// list in `src/generated.rs`, which the compiler only half-checks: remove a
+/// file and the build breaks, add one and it ships looking like a root without
+/// being in the table.
+///
+/// The comparison is against `ROOTS`, not against any environment's anchors,
+/// because the directory holds the whole published population — including the
+/// roots Mozilla trusts for nothing, which belong to the collection and
+/// deliberately appear in no environment. Checking a subset here would report
+/// every email-only and untrusted root as drift.
+#[test]
+fn root_inputs_match_the_embedded_population() {
+    use std::path::Path;
+
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("roots/mozilla");
+    let ders: Vec<&[u8]> = ROOTS.iter().map(|r| r.der).collect();
+    let failures = conformance::check_root_inputs(&dir, &ders);
+    assert!(
+        failures.is_empty(),
+        "roots/mozilla has drifted from the embedded population:\n - {}",
+        failures.join("\n - ")
+    );
+}
+
 /// Path *validation*, not just assembly: every CA in the store is reachable
 /// from an embedded anchor with signatures verified the whole way down. The
 /// environment comes from here rather than the harness because the crypto a
