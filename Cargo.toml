@@ -20,7 +20,7 @@ certval_stores_core = { git = "https://github.com/carl-wallace/certval-stores.gi
 # `rsa` because 118 of the 172 roots are RSA-signed: without it certval's
 # signature verification returns Unrecognized rather than failing loudly, and
 # the conformance suite would pass while checking nothing.
-certval = { git = "https://github.com/carl-wallace/rust-pki.git", default-features = false, features = ["std", "rsa"], branch = "main" }
+certval = { git = "https://github.com/carl-wallace/rust-pki.git", default-features = false, features = ["rsa"], branch = "main" }
 # Versions tracked to certval's, so the OIDs and digests the tests use are the
 # same types certval works with rather than a second copy of them.
 const-oid = { version = "0.10.2", features = ["db"] }
