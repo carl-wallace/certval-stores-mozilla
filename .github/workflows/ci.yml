@@ -115,4 +115,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.x" }
+      # The verifier borrows fetch() and the report URL from tools/refresh.py,
+      # and importing that module pulls in cryptography whether or not the
+      # verifier uses it.
+      - run: pip install cryptography
       - run: python3 tools/verify_against_nss.py
