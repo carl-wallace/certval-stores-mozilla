@@ -20,7 +20,7 @@ store:
 | `mozilla_tls` (default) | `MOZILLA_TLS` | 121 | the Websites trust bit — TLS server authentication |
 | `mozilla_email` | `MOZILLA_EMAIL` | 91 | the Email trust bit — S/MIME |
 | `mozilla_all` | `MOZILLA_ALL` | 170 | either trust bit |
-| `mozilla_cas` | (adds the CA store to `MOZILLA_ALL`) | — | 2,560 intermediates, 6.6 MB |
+| `mozilla_cas` | (adds the CA store to `MOZILLA_ALL`) | — | 2,563 intermediates, 3.9 MB |
 
 ```no_run
 use certval::{PkiEnvironment, TaSource};
@@ -43,8 +43,8 @@ gap in the table above.
 
 ## The intermediate-CA store
 
-`mozilla_cas` (off by default) embeds a certval `CertSource` — 2,560
-CCADB-disclosed intermediates plus the precomputed partial-path graph, 6.6 MB —
+`mozilla_cas` (off by default) embeds a certval `CertSource` — 2,563
+CCADB-disclosed intermediates plus the precomputed partial-path graph, 3.9 MB —
 and attaches it to `MOZILLA_ALL`.
 
 While it is true that in most web PKI scenarios an intermediate CA is supplied in-band, 
@@ -56,7 +56,7 @@ is present and reachable.
 
 CA certificates are only included in `MOZILLA_ALL` because the graph spans all 170 anchors, 
 and 85% of it is common to the two purpose-scoped environments. A pruned copy per
-environment would roughly triple 6.6 MB to buy very little. It cannot simply be
+environment would roughly triple 3.9 MB to buy very little. It cannot simply be
 shared either because the conformance suite requires every serialized path to start at
 a CA that the entry's anchors issued, and 356 of these chain only to email-only
 roots, so including this graph in `MOZILLA_TLS` would cause those to be reported
@@ -157,7 +157,7 @@ selection picks which of them become trust anchors, not which are compiled in �
 gating the bytes would save little, since 170 of the 172 are in `MOZILLA_ALL`
 anyway.
 
-`mozilla_cas` adds 6.6 MB, which is why it is off by default and why the wasm
+`mozilla_cas` adds 3.9 MB, which is why it is off by default and why the wasm
 and MSRV CI legs build without it. A size-constrained consumer that only wants
 TLS anchors and can live without the metadata should take
 `certval::TaSource::new_from_webpki` instead.
