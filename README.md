@@ -136,6 +136,10 @@ anchor set from the roots that wrote.
 
 Then update `SNAPSHOT` in `tools/refresh.py`, re-run, and update the
 `EXPECTED_*` counts in `tests/tests.rs` to the numbers the two tools print.
+`SNAPSHOT` is also what every `StoreEntry` reports as its collection date, so a
+refresh that leaves it alone tells consumers the material is older than it is;
+the entries report no publication date, the CCADB report being a live query
+rather than a dated release.
 `roots/mozilla/` is rewritten from scratch each run, so a root Mozilla removed
 does not linger on disk. Requires the `cryptography` Python package; nothing
 runs at build time, so consumers need neither Python nor network.

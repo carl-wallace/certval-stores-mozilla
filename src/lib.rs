@@ -123,6 +123,13 @@ pub const CA_STORE: Option<&'static [u8]> = None;
 
 /// Trust-store provider for the Mozilla root program.
 ///
+/// Every entry reports [`SNAPSHOT_DATE`] as its collection date and no publication
+/// date. The report is a live query rather than a dated release — CCADB answers with
+/// whatever it holds at the moment it is asked — so the day `tools/refresh.py` ran is
+/// the only date there is, and claiming it as a publication date would dress a fetch
+/// up as a publisher's statement. The intermediates come from the same run, so the
+/// date covers `CA_STORE` as well as the roots.
+///
 /// `MOZILLA_TLS` and `MOZILLA_EMAIL` are anchors-only. `MOZILLA_ALL` carries
 /// [`CA_STORE`] when the `mozilla_cas` feature is on.
 ///
@@ -154,18 +161,24 @@ impl TrustStoreProvider for MozillaStores {
             env: "MOZILLA_TLS",
             roots: TLS_ROOTS,
             cert_store_cbor: None,
+            published: None,
+            collected: Some(SNAPSHOT_DATE),
         });
         #[cfg(feature = "mozilla_email")]
         entries.push(StoreEntry {
             env: "MOZILLA_EMAIL",
             roots: EMAIL_ROOTS,
             cert_store_cbor: None,
+            published: None,
+            collected: Some(SNAPSHOT_DATE),
         });
         #[cfg(feature = "mozilla_all")]
         entries.push(StoreEntry {
             env: "MOZILLA_ALL",
             roots: ALL_ROOTS,
             cert_store_cbor: CA_STORE,
+            published: None,
+            collected: Some(SNAPSHOT_DATE),
         });
         entries
     }
