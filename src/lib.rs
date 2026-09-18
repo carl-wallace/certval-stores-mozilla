@@ -152,13 +152,32 @@ pub const CA_STORE: Option<&'static [u8]> = None;
 /// `MOZILLA_TLS` or `MOZILLA_EMAIL` and supplies intermediates itself.
 pub struct MozillaStores;
 
+/// Store id for the Mozilla TLS-only root set, to pass to `prepare_certval_environment` or
+/// `serialize_environment` rather than spelling it out: the parameter is a
+/// `&str`, so a stale literal compiles and fails at run time.
+#[cfg(feature = "mozilla_tls")]
+pub const TLS: &str = "webpki_tls";
+
+/// Store id for the Mozilla S/MIME-only root set, to pass to `prepare_certval_environment` or
+/// `serialize_environment` rather than spelling it out: the parameter is a
+/// `&str`, so a stale literal compiles and fails at run time.
+#[cfg(feature = "mozilla_email")]
+pub const EMAIL: &str = "webpki_email";
+
+/// Store id for the combined Mozilla root set with CCADB intermediates, to pass to `prepare_certval_environment` or
+/// `serialize_environment` rather than spelling it out: the parameter is a
+/// `&str`, so a stale literal compiles and fails at run time.
+#[cfg(feature = "mozilla_all")]
+pub const ALL: &str = "webpki";
+
 impl TrustStoreProvider for MozillaStores {
     #[allow(unused_mut, clippy::vec_init_then_push)]
     fn entries(&self) -> Vec<StoreEntry> {
         let mut entries = Vec::new();
         #[cfg(feature = "mozilla_tls")]
         entries.push(StoreEntry {
-            env: "MOZILLA_TLS",
+            id: TLS,
+            label: "Web PKI (Mozilla roots, TLS only)",
             roots: TLS_ROOTS,
             cert_store_cbor: None,
             published: None,
@@ -166,7 +185,8 @@ impl TrustStoreProvider for MozillaStores {
         });
         #[cfg(feature = "mozilla_email")]
         entries.push(StoreEntry {
-            env: "MOZILLA_EMAIL",
+            id: EMAIL,
+            label: "Web PKI (Mozilla roots, S/MIME only)",
             roots: EMAIL_ROOTS,
             cert_store_cbor: None,
             published: None,
@@ -174,7 +194,8 @@ impl TrustStoreProvider for MozillaStores {
         });
         #[cfg(feature = "mozilla_all")]
         entries.push(StoreEntry {
-            env: "MOZILLA_ALL",
+            id: ALL,
+            label: "Web PKI (Mozilla roots, TLS + S/MIME, + CCADB intermediates)",
             roots: ALL_ROOTS,
             cert_store_cbor: CA_STORE,
             published: None,
