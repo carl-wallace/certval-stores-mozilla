@@ -202,7 +202,7 @@ fn prepare_environment_rejects_unknown_environment() {
     pe.populate_5280_pki_environment();
     let mut ta_store = TaSource::new();
 
-    let r = prepare_certval_environment(&providers(), &mut pe, &mut ta_store, "NOT_AN_ENV");
+    let r = prepare_certval_environment(&providers(), &mut pe, &mut ta_store, "not_a_store_id");
     assert!(matches!(r, Err(Error::Unrecognized)));
 }
 
@@ -212,9 +212,21 @@ fn prepare_environment_rejects_unknown_environment() {
 /// where it hangs; see the `MozillaStores` docs.
 #[test]
 fn only_mozilla_all_carries_a_ca_store() {
+    // The id constant exists only with the feature that carries the store, which is
+    // the point of it being a constant. A build without that feature yields no such
+    // entry either, so nothing is being skipped here.
+    #[cfg(feature = "mozilla_all")]
+    fn is_combined(id: &str) -> bool {
+        id == certval_stores_mozilla::ALL
+    }
+    #[cfg(not(feature = "mozilla_all"))]
+    fn is_combined(_id: &str) -> bool {
+        false
+    }
+
     for entry in &PROVIDER.entries() {
         assert!(!entry.roots.is_empty());
-        let expected = entry.id == certval_stores_mozilla::ALL && cfg!(feature = "mozilla_cas");
+        let expected = is_combined(entry.id) && cfg!(feature = "mozilla_cas");
         assert_eq!(
             entry.cert_store_cbor.is_some(),
             expected,
