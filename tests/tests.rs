@@ -76,7 +76,7 @@ fn untrusted_roots_are_in_the_table_but_in_no_environment() {
                 !entry.roots.contains(&root.der),
                 "{} appears in {}",
                 root.common_name,
-                entry.env
+                entry.id
             );
         }
     }
@@ -144,8 +144,13 @@ fn prepare_environment_accepts_mozilla_tls() {
     pe.populate_5280_pki_environment();
     let mut ta_store = TaSource::new();
 
-    prepare_certval_environment(&providers(), &mut pe, &mut ta_store, "MOZILLA_TLS")
-        .expect("MOZILLA_TLS must be a recognized environment");
+    prepare_certval_environment(
+        &providers(),
+        &mut pe,
+        &mut ta_store,
+        certval_stores_mozilla::TLS,
+    )
+    .expect("the TLS store id must be recognized");
     assert_eq!(ta_store.len(), EXPECTED_TLS);
 }
 
@@ -160,8 +165,13 @@ fn prepare_environment_accepts_mozilla_email() {
     pe.populate_5280_pki_environment();
     let mut ta_store = TaSource::new();
 
-    prepare_certval_environment(&providers(), &mut pe, &mut ta_store, "MOZILLA_EMAIL")
-        .expect("MOZILLA_EMAIL must be a recognized environment");
+    prepare_certval_environment(
+        &providers(),
+        &mut pe,
+        &mut ta_store,
+        certval_stores_mozilla::EMAIL,
+    )
+    .expect("the S/MIME store id must be recognized");
     assert_eq!(ta_store.len(), EXPECTED_EMAIL);
 }
 
@@ -176,8 +186,13 @@ fn prepare_environment_accepts_mozilla_all() {
     pe.populate_5280_pki_environment();
     let mut ta_store = TaSource::new();
 
-    prepare_certval_environment(&providers(), &mut pe, &mut ta_store, "MOZILLA_ALL")
-        .expect("MOZILLA_ALL must be a recognized environment");
+    prepare_certval_environment(
+        &providers(),
+        &mut pe,
+        &mut ta_store,
+        certval_stores_mozilla::ALL,
+    )
+    .expect("the combined store id must be recognized");
     assert_eq!(ta_store.len(), EXPECTED_ALL);
 }
 
@@ -199,12 +214,12 @@ fn prepare_environment_rejects_unknown_environment() {
 fn only_mozilla_all_carries_a_ca_store() {
     for entry in &PROVIDER.entries() {
         assert!(!entry.roots.is_empty());
-        let expected = entry.env == "MOZILLA_ALL" && cfg!(feature = "mozilla_cas");
+        let expected = entry.id == certval_stores_mozilla::ALL && cfg!(feature = "mozilla_cas");
         assert_eq!(
             entry.cert_store_cbor.is_some(),
             expected,
             "{} carries a CA store: {}",
-            entry.env,
+            entry.id,
             entry.cert_store_cbor.is_some()
         );
     }
