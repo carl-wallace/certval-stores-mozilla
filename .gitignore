@@ -2,3 +2,7 @@
 **/target
 Cargo.lock
 __pycache__/
+# Where the refresh action checks out carl-wallace/certval-stores to build the generator. It
+# lands inside the workspace, so without this an unscoped `git add` would stage that clone as an
+# embedded repository.
+.store-gen/

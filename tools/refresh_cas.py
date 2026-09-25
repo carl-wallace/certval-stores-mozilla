@@ -13,7 +13,7 @@ precomputed partial-path graph — that the `mozilla_cas` feature embeds.
 
     python3 tools/refresh_cas.py [--store-gen /path/to/certval-store-gen]
 
-`certval-store-gen` (RedHoundSoftware/certval-store-gen) must be built and
+`certval-store-gen` (a workspace member of carl-wallace/certval-stores) must be built and
 either on PATH or named with `--store-gen`. Requires the `cryptography` package.
 Nothing runs at build time; the generated store is committed.
 

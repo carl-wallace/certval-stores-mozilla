@@ -1,0 +1,110 @@
+# Refreshing the Mozilla trust material, on a schedule.
+#
+# The drift job in ci.yml already notices when this store stops matching what Firefox ships. It
+# reports and stops there, so a Mozilla change arrives as a red scheduled run that somebody has to
+# be watching for. This turns that into the same thing the certval-stores workspace produces: a
+# pull request carrying the new material, with the counts failing until a person reviews them.
+#
+# Detection and action are kept as separate jobs on purpose. Drift runs daily and is cheap; this
+# fetches the whole CCADB report and every disclosed intermediate, and runs weekly.
+name: refresh mozilla
+
+on:
+  schedule:
+    # Weekly, offset from the daily drift check in ci.yml.
+    - cron: "45 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The CA refresh drives certval-store-gen, which lives in the sibling workspace rather than
+      # here. Building it from source rather than installing a published binary keeps the store
+      # format and the generator in step: a CBOR encoding change lands in one repository and this
+      # one would otherwise keep writing the old shape.
+      - uses: actions/checkout@v4
+        with:
+          repository: carl-wallace/certval-stores
+          path: .store-gen
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build certval-store-gen
+        run: |
+          cargo build --release --manifest-path .store-gen/Cargo.toml -p certval-store-gen
+          echo "$GITHUB_WORKSPACE/.store-gen/target/release" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.x" }
+      - run: pip install cryptography
+
+      # refresh.py carries the snapshot date as a constant and its own documentation says to edit
+      # it, re-run, and check the counts. Setting it here removes the two-pass step; a refresh
+      # taken today is dated today, and nothing else in the file is touched.
+      - name: Date this snapshot
+        run: |
+          today="$(date -u +%Y-%m-%d)"
+          sed -i "s/^SNAPSHOT = \".*\"/SNAPSHOT = \"$today\"/" tools/refresh.py
+          grep -n '^SNAPSHOT' tools/refresh.py
+
+      - name: Refresh the roots
+        run: python3 tools/refresh.py 2>&1 | tee refresh.log
+
+      - name: Refresh the intermediates
+        run: python3 tools/refresh_cas.py 2>&1 | tee -a refresh.log
+
+      - name: Open a pull request if the material moved
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # tools/refresh.py is restored first: its only change was the snapshot date, which has
+          # already been written into the generated file, and carrying the edit into the branch
+          # would make every refresh conflict with the last one.
+          git checkout -- tools/refresh.py
+          # Scoped to what the refresh writes, never `-A`: the generator is checked out at
+          # .store-gen inside this workspace, so an unscoped status is never empty and an unscoped
+          # add would stage that clone, build directory and all, as an embedded repository.
+          paths="roots cas src/generated.rs"
+          if [ -z "$(git status --porcelain -- $paths)" ]; then
+            echo "nothing changed"
+            exit 0
+          fi
+          branch="refresh/mozilla-$(date -u +%Y%m%d)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -- $paths
+          git commit -F - <<EOF
+          refresh the Mozilla trust material from CCADB
+
+          $(grep -Ei 'root|intermediate' refresh.log | tail -20)
+          EOF
+          git push origin "$branch"
+          gh pr create \
+            --title "refresh the Mozilla trust material" \
+            --body "$(cat <<'BODY'
+          Opened by the scheduled refresh, from Mozilla's CCADB report. Each row's published
+          fingerprint was checked against the certificate it carries before anything was written.
+
+          **CI on this pull request is expected to fail.** `tests/tests.rs` pins the counts the
+          snapshot had when it was last reviewed. Read the certificate diff, update the counts,
+          and merge.
+
+          Worth looking at first:
+
+          - roots removed -- a removal is a distrust decision by the program, and the one change
+            here that can cost a consumer a path it used to find
+          - roots whose trust bits changed, since the TLS and S/MIME environments are cut from the
+            same set by those bits
+          - `distrust-after` dates, which the tests treat as snapshot facts rather than
+            invariants: if a refresh drops the last root carrying one, the assertion that they
+            survive generation has nothing left to assert and needs saying so
+          - the intermediate count, which moves on its own as CCADB disclosures change and does
+            not track the root count
+          BODY
+          )"
