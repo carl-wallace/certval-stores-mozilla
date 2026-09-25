@@ -15,9 +15,10 @@ on:
     - cron: "45 6 * * 1"
   workflow_dispatch:
 
+# Only contents: write, to push a branch. `pull-requests: write` would also let a
+# workflow approve a pull request, which is not a power this repository grants.
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   refresh:
@@ -58,9 +59,7 @@ jobs:
       - name: Refresh the intermediates
         run: python3 tools/refresh_cas.py 2>&1 | tee -a refresh.log
 
-      - name: Open a pull request if the material moved
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Push a branch if the material moved
         run: |
           # tools/refresh.py is restored first: its only change was the snapshot date, which has
           # already been written into the generated file, and carrying the edit into the branch
@@ -79,32 +78,31 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git add -- $paths
+          # The review guidance lives here rather than in a pull request body: this job opens no
+          # pull request, because doing so needs a permission that also allows a workflow to
+          # approve one. The branch is the signal.
           git commit -F - <<EOF
           refresh the Mozilla trust material from CCADB
 
           $(grep -Ei 'root|intermediate' refresh.log | tail -20)
-          EOF
-          git push origin "$branch"
-          gh pr create \
-            --title "refresh the Mozilla trust material" \
-            --body "$(cat <<'BODY'
-          Opened by the scheduled refresh, from Mozilla's CCADB report. Each row's published
-          fingerprint was checked against the certificate it carries before anything was written.
 
-          **CI on this pull request is expected to fail.** `tests/tests.rs` pins the counts the
-          snapshot had when it was last reviewed. Read the certificate diff, update the counts,
-          and merge.
+          Each row's published fingerprint was checked against the certificate it carries before
+          anything was written.
+
+          CI is expected to fail. tests/tests.rs pins the counts the snapshot had when it was last
+          reviewed. Read the certificate diff, update the counts, and merge.
 
           Worth looking at first:
 
-          - roots removed -- a removal is a distrust decision by the program, and the one change
+          - roots removed: a removal is a distrust decision by the program, and the one change
             here that can cost a consumer a path it used to find
           - roots whose trust bits changed, since the TLS and S/MIME environments are cut from the
             same set by those bits
-          - `distrust-after` dates, which the tests treat as snapshot facts rather than
-            invariants: if a refresh drops the last root carrying one, the assertion that they
-            survive generation has nothing left to assert and needs saying so
+          - distrust-after dates, which the tests treat as snapshot facts rather than invariants:
+            if a refresh drops the last root carrying one, the assertion that they survive
+            generation has nothing left to assert and needs saying so
           - the intermediate count, which moves on its own as CCADB disclosures change and does
             not track the root count
-          BODY
-          )"
+          EOF
+          git push origin "$branch"
+          echo "pushed $branch; open a pull request from it when you are ready to review"

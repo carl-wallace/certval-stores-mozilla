@@ -1,8 +1,8 @@
 # Dependency updates.
 #
-# This repository vendors its trust material, so a cargo bump here is ordinary dependency churn
-# rather than a trust decision -- the roots move through `tools/refresh.py`, not through the
-# lockfile. Grouped accordingly.
+# This repository keeps its own copy of the trust material, so a cargo bump here is ordinary
+# dependency churn rather than a trust decision: the roots move through `tools/refresh.py`, not
+# through the lockfile. Grouped accordingly.
 version: 2
 updates:
   - package-ecosystem: cargo
@@ -10,18 +10,26 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     groups:
-      rust-crypto:
+      # One pull request for the week's churn. Grouping by family sounded tidier and produced one
+      # grouped update beside four ungrouped ones, because a week's movement rarely lands inside
+      # whichever family was named.
+      cargo:
         patterns:
-          - "x509-*"
-          - "const-oid"
-          - "der"
-          - "spki"
-          - "sha1"
-          - "sha2"
+          - "*"
+        # `certval` is a git pin, so a bump changes the engine this store is built against, which
+        # is a decision rather than an update. The trust material is not here to exclude: unlike
+        # the certval-stores workspace, nothing in this repository gets its roots from a crate.
+        exclude-patterns:
+          - "certval"
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns:
+          - "*"
