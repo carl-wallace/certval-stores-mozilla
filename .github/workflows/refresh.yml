@@ -23,13 +23,13 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The CA refresh drives certval-store-gen, which lives in the sibling workspace rather than
       # here. Building it from source rather than installing a published binary keeps the store
       # format and the generator in step: a CBOR encoding change lands in one repository and this
       # one would otherwise keep writing the old shape.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: carl-wallace/certval-stores
           path: .store-gen
