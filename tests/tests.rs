@@ -36,8 +36,7 @@ const EXPECTED_INTERMEDIATES: usize = 2563;
 /// material fails here and has to be acknowledged deliberately.
 ///
 /// To update: run the tests, and the failure prints the digest to paste in.
-const EXPECTED_ROOT_SET: &str =
-    "0aebd6dfba71709089313b7e02feab3e22c169d1d7cd10b19c4239f25f4e7f82";
+const EXPECTED_ROOT_SET: &str = "0aebd6dfba71709089313b7e02feab3e22c169d1d7cd10b19c4239f25f4e7f82";
 #[cfg(feature = "mozilla_cas")]
 const EXPECTED_INTERMEDIATE_SET: &str =
     "12a02c851a57dc9f0077cdb5206f3c92a7cb71dd0f651756b846d5a2508d8fdd";
@@ -88,7 +87,8 @@ fn snapshot_carries_the_expected_certificates() {
 fn store_carries_the_expected_certificates() {
     use certval::CertSource;
 
-    let cbor = certval_stores_mozilla::CA_STORE.expect("the mozilla_cas feature must embed a store");
+    let cbor =
+        certval_stores_mozilla::CA_STORE.expect("the mozilla_cas feature must embed a store");
     let mut cert_source = CertSource::new_from_cbor(cbor).expect("mozilla.cbor must deserialize");
     cert_source
         .initialize(&Default::default())
