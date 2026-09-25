@@ -39,7 +39,7 @@ jobs:
           cargo build --release --manifest-path .store-gen/Cargo.toml -p certval-store-gen
           echo "$GITHUB_WORKSPACE/.store-gen/target/release" >> "$GITHUB_PATH"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "3.x" }
       - run: pip install cryptography
 
