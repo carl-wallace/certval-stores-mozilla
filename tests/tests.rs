@@ -27,6 +27,41 @@ const EXPECTED_ALL: usize = 170;
 #[cfg(feature = "mozilla_cas")]
 const EXPECTED_INTERMEDIATES: usize = 2563;
 
+/// Digests over the *sets* the snapshot carries, which the counts above cannot see.
+///
+/// A count measures size where the question is membership. On 2026-09-25 a refresh removed 19
+/// intermediates and added 19 others: every count above was unchanged, the tests passed, and 38
+/// changed certificates went through a gate whose whole purpose is to make a person look. These
+/// move whenever any certificate is added, removed or swapped, so a refresh that changes the
+/// material fails here and has to be acknowledged deliberately.
+///
+/// To update: run the tests, and the failure prints the digest to paste in.
+const EXPECTED_ROOT_SET: &str = "0aebd6dfba71709089313b7e02feab3e22c169d1d7cd10b19c4239f25f4e7f82";
+#[cfg(feature = "mozilla_cas")]
+const EXPECTED_INTERMEDIATE_SET: &str =
+    "12a02c851a57dc9f0077cdb5206f3c92a7cb71dd0f651756b846d5a2508d8fdd";
+
+/// Fingerprint of a certificate set, independent of the order it is stored in.
+///
+/// Each certificate is digested, the digests are sorted, and the sorted list is digested again.
+/// Sorting is what makes it a *set* fingerprint: a generator that emits the same certificates in a
+/// different order is not a change and must not read as one.
+fn set_digest<'a>(ders: impl Iterator<Item = &'a [u8]>) -> String {
+    use core::fmt::Write;
+    use sha2::{Digest, Sha256};
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().fold(String::new(), |mut s, b| {
+            let _ = write!(s, "{b:02x}");
+            s
+        })
+    }
+
+    let mut each: Vec<String> = ders.map(|der| hex(&Sha256::digest(der))).collect();
+    each.sort_unstable();
+    hex(&Sha256::digest(each.join("\n").as_bytes()))
+}
+
 fn providers() -> Vec<&'static dyn TrustStoreProvider> {
     vec![certval_stores_mozilla::provider()]
 }
@@ -34,6 +69,36 @@ fn providers() -> Vec<&'static dyn TrustStoreProvider> {
 #[test]
 fn provider_is_conformant() {
     conformance::assert_conformant(certval_stores_mozilla::provider());
+}
+
+/// The gate the counts are not. See [`EXPECTED_ROOT_SET`].
+#[test]
+fn snapshot_carries_the_expected_certificates() {
+    let roots = set_digest(ROOTS.iter().map(|r| r.der));
+    assert_eq!(
+        roots, EXPECTED_ROOT_SET,
+        "the root set changed; if that is intended, set EXPECTED_ROOT_SET to {roots}"
+    );
+}
+
+/// The same gate for the intermediates, which is where substitution actually happened.
+#[test]
+#[cfg(feature = "mozilla_cas")]
+fn store_carries_the_expected_certificates() {
+    use certval::CertSource;
+
+    let cbor =
+        certval_stores_mozilla::CA_STORE.expect("the mozilla_cas feature must embed a store");
+    let mut cert_source = CertSource::new_from_cbor(cbor).expect("mozilla.cbor must deserialize");
+    cert_source
+        .initialize(&Default::default())
+        .expect("mozilla.cbor must initialize");
+    let buffers = cert_source.get_buffers();
+    let store = set_digest(buffers.iter().map(|cf| cf.bytes.as_slice()));
+    assert_eq!(
+        store, EXPECTED_INTERMEDIATE_SET,
+        "the intermediate set changed; if that is intended, set EXPECTED_INTERMEDIATE_SET to {store}"
+    );
 }
 
 #[test]
