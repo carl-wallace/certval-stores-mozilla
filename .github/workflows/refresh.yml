@@ -66,7 +66,11 @@ jobs:
           # already been written into the generated file, and carrying the edit into the branch
           # would make every refresh conflict with the last one.
           git checkout -- tools/refresh.py
-          if [ -z "$(git status --porcelain)" ]; then
+          # Scoped to what the refresh writes, never `-A`: the generator is checked out at
+          # .store-gen inside this workspace, so an unscoped status is never empty and an unscoped
+          # add would stage that clone, build directory and all, as an embedded repository.
+          paths="roots cas src/generated.rs"
+          if [ -z "$(git status --porcelain -- $paths)" ]; then
             echo "nothing changed"
             exit 0
           fi
@@ -74,7 +78,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add -A
+          git add -- $paths
           git commit -F - <<EOF
           refresh the Mozilla trust material from CCADB
 
