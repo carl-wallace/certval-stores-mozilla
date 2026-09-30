@@ -69,8 +69,12 @@ jobs:
           # .store-gen inside this workspace, so an unscoped status is never empty and an unscoped
           # add would stage that clone, build directory and all, as an embedded repository.
           paths="roots cas src/generated.rs"
-          if [ -z "$(git status --porcelain -- $paths)" ]; then
-            echo "nothing changed"
+          # The generated file carries the snapshot date, which changes on every run, so a
+          # refresh that moved nothing else pushes no branch. Every other line in it counts:
+          # trust bits and distrust-after dates change there and nowhere else.
+          if [ -z "$(git status --porcelain -- roots cas)" ] &&
+             git diff --quiet -I '^// Snapshot: ' -I '^pub const SNAPSHOT_DATE: ' -- src/generated.rs; then
+            echo "nothing changed beyond the snapshot date"
             exit 0
           fi
           branch="refresh/mozilla-$(date -u +%Y%m%d)"
