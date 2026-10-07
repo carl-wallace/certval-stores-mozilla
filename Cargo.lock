@@ -97,7 +97,7 @@ dependencies = [
 [[package]]
 name = "certval"
 version = "0.2.0-pre"
-source = "git+https://github.com/carl-wallace/rust-pki.git?branch=main#f2c961744fdd68fa8593265e7643ceba1f7151dd"
+source = "git+https://github.com/carl-wallace/rust-pki.git?branch=main#4035ac21736a6d5ac4652a154b13438d13e8ffb9"
 dependencies = [
  "base64ct",
  "cfg-if",
@@ -132,7 +132,7 @@ dependencies = [
 [[package]]
 name = "certval_stores_core"
 version = "0.1.0"
-source = "git+https://github.com/carl-wallace/certval-stores.git?branch=main#a44d8aa9b8da5784cc9cc82748e4b869007442a4"
+source = "git+https://github.com/carl-wallace/certval-stores.git?branch=main#4e09c8c9ac9670fbe9d0de74be5c3b16214fe81b"
 dependencies = [
  "certval",
  "ciborium",
@@ -429,6 +429,7 @@ dependencies = [
  "ff",
  "group",
  "hybrid-array",
+ "pkcs8",
  "rand_core",
  "sec1",
  "subtle",
@@ -1215,7 +1216,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 [[package]]
 name = "pkiprocmacros"
 version = "0.1.2"
-source = "git+https://github.com/carl-wallace/rust-pki.git?branch=main#f2c961744fdd68fa8593265e7643ceba1f7151dd"
+source = "git+https://github.com/carl-wallace/rust-pki.git?branch=main#4035ac21736a6d5ac4652a154b13438d13e8ffb9"
 dependencies = [
  "quote",
  "syn 2.0.119",
