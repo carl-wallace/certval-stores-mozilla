@@ -57,6 +57,10 @@ jobs:
         run: python3 tools/refresh.py 2>&1 | tee refresh.log
 
       - name: Refresh the intermediates
+        # certval-store-gen logs at INFO unless told otherwise, and its lines go into refresh.log,
+        # which the commit message below greps for "root|intermediate".
+        env:
+          RUST_LOG: warn
         run: python3 tools/refresh_cas.py 2>&1 | tee -a refresh.log
 
       - name: Push a branch if the material moved
