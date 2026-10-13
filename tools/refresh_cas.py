@@ -274,7 +274,7 @@ def main():
 
     print(f"\nwrote {STORE} ({os.path.getsize(STORE) / 1e6:.2f} MB)")
     print(f"  intermediates in store: {len(in_store)}")
-    print("update EXPECTED_INTERMEDIATES in tests/tests.rs to match")
+    print("update the pinned constants: UPDATE_PINS=1 cargo test --all-features")
 
 
 if __name__ == "__main__":

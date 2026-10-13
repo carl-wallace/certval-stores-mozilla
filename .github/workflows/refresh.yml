@@ -98,8 +98,14 @@ jobs:
           Each row's published fingerprint was checked against the certificate it carries before
           anything was written.
 
-          CI is expected to fail. tests/tests.rs pins the counts the snapshot had when it was last
-          reviewed. Read the certificate diff, update the counts, and merge.
+          CI is expected to fail. tests/tests.rs pins the counts and set digests the snapshot had
+          when it was last reviewed. Read the certificate diff, update the constants on this
+          branch, read their diff beside it, and merge:
+
+              UPDATE_PINS=1 cargo test --all-features
+              cargo fmt
+              cargo test --all-features
+              git diff -- tests/
 
           Worth looking at first:
 
