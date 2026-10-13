@@ -17,13 +17,13 @@ use certval::{Error, PkiEnvironment, TaSource};
 use certval_stores_core::{conformance, prepare_certval_environment, TrustStoreProvider};
 use certval_stores_mozilla::{find_by_sha256, ALL_ROOTS, EMAIL_ROOTS, PROVIDER, ROOTS, TLS_ROOTS};
 
-/// Counts from the embedded snapshot. Update these with the material; run
-/// `python3 tools/refresh.py` and use the numbers it prints.
+/// Counts from the embedded snapshot. To update every pinned constant here:
+/// `UPDATE_PINS=1 cargo test --all-features` (see `certval_stores_core::conformance::check_pin`).
 const EXPECTED_ROOTS: usize = 172;
 const EXPECTED_TLS: usize = 121;
 const EXPECTED_EMAIL: usize = 91;
 const EXPECTED_ALL: usize = 170;
-/// Intermediates in the `mozilla_cas` store; `tools/refresh_cas.py` prints it.
+/// Intermediates in the `mozilla_cas` store.
 #[cfg(feature = "mozilla_cas")]
 const EXPECTED_INTERMEDIATES: usize = 2579;
 
@@ -35,7 +35,7 @@ const EXPECTED_INTERMEDIATES: usize = 2579;
 /// move whenever any certificate is added, removed or swapped, so a refresh that changes the
 /// material fails here and has to be acknowledged deliberately.
 ///
-/// To update: run the tests, and the failure prints the digest to paste in.
+/// Updated with the counts; see above.
 const EXPECTED_ROOT_SET: &str = "0aebd6dfba71709089313b7e02feab3e22c169d1d7cd10b19c4239f25f4e7f82";
 #[cfg(feature = "mozilla_cas")]
 const EXPECTED_INTERMEDIATE_SET: &str =
@@ -75,10 +75,7 @@ fn provider_is_conformant() {
 #[test]
 fn snapshot_carries_the_expected_certificates() {
     let roots = set_digest(ROOTS.iter().map(|r| r.der));
-    assert_eq!(
-        roots, EXPECTED_ROOT_SET,
-        "the root set changed; if that is intended, set EXPECTED_ROOT_SET to {roots}"
-    );
+    certval_stores_core::pin!(EXPECTED_ROOT_SET, roots);
 }
 
 /// The same gate for the intermediates, which is where substitution actually happened.
@@ -95,18 +92,15 @@ fn store_carries_the_expected_certificates() {
         .expect("mozilla.cbor must initialize");
     let buffers = cert_source.get_buffers();
     let store = set_digest(buffers.iter().map(|cf| cf.bytes.as_slice()));
-    assert_eq!(
-        store, EXPECTED_INTERMEDIATE_SET,
-        "the intermediate set changed; if that is intended, set EXPECTED_INTERMEDIATE_SET to {store}"
-    );
+    certval_stores_core::pin!(EXPECTED_INTERMEDIATE_SET, store);
 }
 
 #[test]
 fn snapshot_carries_the_expected_population() {
-    assert_eq!(ROOTS.len(), EXPECTED_ROOTS);
-    assert_eq!(TLS_ROOTS.len(), EXPECTED_TLS);
-    assert_eq!(EMAIL_ROOTS.len(), EXPECTED_EMAIL);
-    assert_eq!(ALL_ROOTS.len(), EXPECTED_ALL);
+    certval_stores_core::pin!(EXPECTED_ROOTS, ROOTS.len());
+    certval_stores_core::pin!(EXPECTED_TLS, TLS_ROOTS.len());
+    certval_stores_core::pin!(EXPECTED_EMAIL, EMAIL_ROOTS.len());
+    certval_stores_core::pin!(EXPECTED_ALL, ALL_ROOTS.len());
 }
 
 /// The metadata table and the DER slices are generated from one another, so a
@@ -133,7 +127,7 @@ fn slices_agree_with_the_metadata_table() {
 #[test]
 fn untrusted_roots_are_in_the_table_but_in_no_environment() {
     let untrusted: Vec<_> = ROOTS.iter().filter(|r| !r.is_trusted()).collect();
-    assert_eq!(untrusted.len(), EXPECTED_ROOTS - EXPECTED_ALL);
+    assert_eq!(untrusted.len(), ROOTS.len() - ALL_ROOTS.len());
     for root in untrusted {
         assert!(!ALL_ROOTS.contains(&root.der), "{}", root.common_name);
         for entry in PROVIDER.entries() {
@@ -216,7 +210,7 @@ fn prepare_environment_accepts_mozilla_tls() {
         certval_stores_mozilla::TLS,
     )
     .expect("the TLS store id must be recognized");
-    assert_eq!(ta_store.len(), EXPECTED_TLS);
+    certval_stores_core::pin!(EXPECTED_TLS, ta_store.len());
 }
 
 #[test]
@@ -237,7 +231,7 @@ fn prepare_environment_accepts_mozilla_email() {
         certval_stores_mozilla::EMAIL,
     )
     .expect("the S/MIME store id must be recognized");
-    assert_eq!(ta_store.len(), EXPECTED_EMAIL);
+    certval_stores_core::pin!(EXPECTED_EMAIL, ta_store.len());
 }
 
 #[test]
@@ -258,7 +252,7 @@ fn prepare_environment_accepts_mozilla_all() {
         certval_stores_mozilla::ALL,
     )
     .expect("the combined store id must be recognized");
-    assert_eq!(ta_store.len(), EXPECTED_ALL);
+    certval_stores_core::pin!(EXPECTED_ALL, ta_store.len());
 }
 
 #[test]
@@ -316,7 +310,7 @@ fn embedded_ca_store_deserializes_and_initializes() {
     cert_source
         .initialize(&Default::default())
         .expect("mozilla.cbor must initialize");
-    assert_eq!(cert_source.len(), EXPECTED_INTERMEDIATES);
+    certval_stores_core::pin!(EXPECTED_INTERMEDIATES, cert_source.len());
 }
 
 /// Only the `.cbor` is compiled in; the `.der` files beside it are the

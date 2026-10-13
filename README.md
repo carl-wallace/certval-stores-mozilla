@@ -134,8 +134,9 @@ cargo test --all-features
 or named with `--store-gen`; it must run after `refresh.py`, since it derives the
 anchor set from the roots that wrote.
 
-Then update `SNAPSHOT` in `tools/refresh.py`, re-run, and update the
-`EXPECTED_*` counts in `tests/tests.rs` to the numbers the two tools print.
+Then update `SNAPSHOT` in `tools/refresh.py`, re-run, and update the pinned
+counts and set digests in `tests/tests.rs` with `UPDATE_PINS=1 cargo test --all-features`,
+then `cargo fmt`, a plain `cargo test --all-features`, and a read of the diff.
 `SNAPSHOT` is also what every `StoreEntry` reports as its collection date, so a
 refresh that leaves it alone tells consumers the material is older than it is;
 the entries report no publication date, the CCADB report being a live query
