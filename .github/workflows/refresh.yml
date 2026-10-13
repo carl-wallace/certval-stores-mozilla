@@ -15,10 +15,14 @@ on:
     - cron: "45 6 * * 1"
   workflow_dispatch:
 
-# Only contents: write, to push a branch. `pull-requests: write` would also let a
-# workflow approve a pull request, which is not a power this repository grants.
+# contents to push the refresh branch, pull-requests to open the pull request. Opening one also
+# needs the repository setting "Allow GitHub Actions to create and approve pull requests", which
+# is on in this repository and certval-stores only; with no required approvals in the rulesets,
+# the approval half of that setting unlocks nothing. A pull request opened with this token starts
+# no workflow: CI runs when the reviewer pushes the updated pinned constants.
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   refresh:
@@ -63,7 +67,14 @@ jobs:
           RUST_LOG: warn
         run: python3 tools/refresh_cas.py 2>&1 | tee -a refresh.log
 
-      - name: Push a branch if the material moved
+      - name: Open a pull request if the material moved
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Lines that change on every run. Compared against an open pull request's branch, they
+          # would otherwise read as the material moving again every week.
+          IGNORE_LINES: |
+            ^// Snapshot:
+            ^pub const SNAPSHOT_DATE:
         run: |
           # tools/refresh.py is restored first: its only change was the snapshot date, which has
           # already been written into the generated file, and carrying the edit into the branch
@@ -81,17 +92,7 @@ jobs:
             echo "nothing changed beyond the snapshot date"
             exit 0
           fi
-          branch="refresh/mozilla-$(date -u +%Y%m%d)"
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$branch"
-          git add -- $paths
-          # The review guidance lives here rather than in a pull request body: this job opens no
-          # pull request, because doing so needs a permission that also allows a workflow to
-          # approve one. The branch is the signal.
-          git commit -F - <<EOF
-          refresh the Mozilla trust material from CCADB
-
+          cat > "$RUNNER_TEMP/body.md" <<EOF
           $(grep -Ei 'root|intermediate' refresh.log | tail -20)
 
           Each row's published fingerprint was checked against the certificate it carries before
@@ -112,5 +113,6 @@ jobs:
           - the intermediate count, which moves on its own as CCADB disclosures change and does
             not track the root count
           EOF
-          git push origin "$branch"
-          echo "pushed $branch; open a pull request from it when you are ready to review"
+          bash .github/scripts/refresh-pr.sh refresh/mozilla \
+            "refresh the Mozilla trust material from CCADB ($(date -u +%Y-%m-%d))" \
+            "$RUNNER_TEMP/body.md" $paths
