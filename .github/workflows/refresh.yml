@@ -24,6 +24,13 @@ permissions:
   contents: write
   pull-requests: write
 
+# An explicit bash runs every step with pipefail, which the runner's default shell leaves off.
+# Both refresh steps pipe through tee, so a script that dies part-way fails its step instead of
+# leaving the job to open a pull request from whatever it wrote before dying.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -46,7 +53,9 @@ jobs:
 
       - uses: actions/setup-python@v7
         with: { python-version: "3.x" }
-      - run: pip install cryptography
+      # cbor2 is what refresh_cas.py reads the generated store back with, to find the CAs certval
+      # reached no path for.
+      - run: pip install cryptography cbor2
 
       # refresh.py carries the snapshot date as a constant and its own documentation says to edit
       # it, re-run, and check the counts. Setting it here removes the two-pass step; a refresh
@@ -62,7 +71,7 @@ jobs:
 
       - name: Refresh the intermediates
         # certval-store-gen logs at INFO unless told otherwise, and its lines go into refresh.log,
-        # which the commit message below greps for "root|intermediate".
+        # which the commit message and pull request description below carry whole.
         env:
           RUST_LOG: warn
         run: python3 tools/refresh_cas.py 2>&1 | tee -a refresh.log
@@ -92,8 +101,11 @@ jobs:
             echo "nothing changed beyond the snapshot date"
             exit 0
           fi
-          cat > "$RUNNER_TEMP/body.md" <<EOF
-          $(grep -Ei 'root|intermediate' refresh.log | tail -20)
+          # The whole log, indented as a code block: each count is followed by the lines that
+          # account for it (the roots with no trust bits, every intermediate omitted or removed),
+          # and a filter on the text keeps some of those lines and drops others.
+          sed 's/^/    /' refresh.log > "$RUNNER_TEMP/body.md"
+          cat >> "$RUNNER_TEMP/body.md" <<EOF
 
           Each row's published fingerprint was checked against the certificate it carries before
           anything was written.
