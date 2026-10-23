@@ -25,7 +25,7 @@ const EXPECTED_EMAIL: usize = 91;
 const EXPECTED_ALL: usize = 170;
 /// Intermediates in the `mozilla_cas` store.
 #[cfg(feature = "mozilla_cas")]
-const EXPECTED_INTERMEDIATES: usize = 2579;
+const EXPECTED_INTERMEDIATES: usize = 2566;
 
 /// Digests over the *sets* the snapshot carries, which the counts above cannot see.
 ///
@@ -39,7 +39,7 @@ const EXPECTED_INTERMEDIATES: usize = 2579;
 const EXPECTED_ROOT_SET: &str = "0aebd6dfba71709089313b7e02feab3e22c169d1d7cd10b19c4239f25f4e7f82";
 #[cfg(feature = "mozilla_cas")]
 const EXPECTED_INTERMEDIATE_SET: &str =
-    "9e17bdb9d6f381c84de99d4b9b9d3bbf6ac9e76dcd069f26a5f652c26dfa8c29";
+    "483c93a506d36ced983eafef93b9ee69b6dc681f4602e8becb0c64255d6eeb70";
 
 /// Fingerprint of a certificate set, independent of the order it is stored in.
 ///
