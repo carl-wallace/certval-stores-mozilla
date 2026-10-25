@@ -19,13 +19,13 @@ use certval_stores_mozilla::{find_by_sha256, ALL_ROOTS, EMAIL_ROOTS, PROVIDER, R
 
 /// Counts from the embedded snapshot. To update every pinned constant here:
 /// `UPDATE_PINS=1 cargo test --all-features` (see `certval_stores_core::conformance::check_pin`).
-const EXPECTED_ROOTS: usize = 172;
-const EXPECTED_TLS: usize = 121;
-const EXPECTED_EMAIL: usize = 91;
-const EXPECTED_ALL: usize = 170;
+const EXPECTED_ROOTS: usize = 169;
+const EXPECTED_TLS: usize = 118;
+const EXPECTED_EMAIL: usize = 88;
+const EXPECTED_ALL: usize = 167;
 /// Intermediates in the `mozilla_cas` store.
 #[cfg(feature = "mozilla_cas")]
-const EXPECTED_INTERMEDIATES: usize = 2566;
+const EXPECTED_INTERMEDIATES: usize = 2534;
 
 /// Digests over the *sets* the snapshot carries, which the counts above cannot see.
 ///
@@ -36,10 +36,10 @@ const EXPECTED_INTERMEDIATES: usize = 2566;
 /// material fails here and has to be acknowledged deliberately.
 ///
 /// Updated with the counts; see above.
-const EXPECTED_ROOT_SET: &str = "0aebd6dfba71709089313b7e02feab3e22c169d1d7cd10b19c4239f25f4e7f82";
+const EXPECTED_ROOT_SET: &str = "d313aaf4c5cf5893dd0257724530f142d731316ef91e35773dd4fb1869cc35dc";
 #[cfg(feature = "mozilla_cas")]
 const EXPECTED_INTERMEDIATE_SET: &str =
-    "483c93a506d36ced983eafef93b9ee69b6dc681f4602e8becb0c64255d6eeb70";
+    "10fab8f155e5ee07b2bbb9a7137472b5a4b09b533df00cd24f435ab0f0c253fe";
 
 /// Fingerprint of a certificate set, independent of the order it is stored in.
 ///
