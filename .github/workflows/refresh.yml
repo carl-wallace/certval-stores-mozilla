@@ -105,7 +105,11 @@ jobs:
           # account for it (the roots with no trust bits, every intermediate omitted or removed),
           # and a filter on the text keeps some of those lines and drops others.
           sed 's/^/    /' refresh.log > "$RUNNER_TEMP/body.md"
+          # The anchors added, removed or replaced, by subject. Empty when no root moved.
+          roots="$(bash .github/scripts/roots-diff.sh .)"
           cat >> "$RUNNER_TEMP/body.md" <<EOF
+
+          $roots
 
           Each row's published fingerprint was checked against the certificate it carries before
           anything was written.
