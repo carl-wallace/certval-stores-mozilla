@@ -14,10 +14,6 @@ env:
   CARGO_INCREMENTAL: 0
   RUSTFLAGS: "-Dwarnings"
 
-# No MSRV matrix leg with default features, for the same reason as the
-# certval-stores workspace: reqwest pulls idna -> icu_* 2.2.0, which requires
-# rustc 1.86, so a 1.85 job fails in dependency resolution. The no-client leg
-# below holds certval's own 1.85 floor.
 jobs:
   build:
     if: github.event_name != 'schedule'
@@ -77,7 +73,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.85.0 # certval's MSRV
+          toolchain: 1.88.0 # certval's MSRV
       - run: cargo build --no-default-features --features mozilla_tls
 
   fmt:
