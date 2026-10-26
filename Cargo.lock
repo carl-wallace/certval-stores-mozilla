@@ -97,7 +97,7 @@ dependencies = [
 [[package]]
 name = "certval"
 version = "0.2.0-pre"
-source = "git+https://github.com/carl-wallace/rust-pki.git?branch=main#408d2f9a990455fdd498bf192efdcef9334c6f35"
+source = "git+https://github.com/carl-wallace/rust-pki.git?branch=main#99640ea0309ef8cefa3bf5e241ab939618cb8795"
 dependencies = [
  "base64ct",
  "cfg-if",
@@ -132,7 +132,7 @@ dependencies = [
 [[package]]
 name = "certval_stores_core"
 version = "0.1.0"
-source = "git+https://github.com/carl-wallace/certval-stores.git?branch=main#f81f0d29f4894e73318ae25595c49dbf7e5966fc"
+source = "git+https://github.com/carl-wallace/certval-stores.git?branch=main#9de23fedab347f0d8a987256c7fdb178aad53c36"
 dependencies = [
  "certval",
  "ciborium",
@@ -225,8 +225,8 @@ checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 
 [[package]]
 name = "cms"
-version = "0.3.0-pre.2"
-source = "git+https://github.com/RustCrypto/formats.git#4994d934fb9e3aa9d6e0b3cd4e3b3ac3411d6aeb"
+version = "0.3.0-rc.0"
+source = "git+https://github.com/RustCrypto/formats.git#4c5fadb155ebc05c4a8a3abc05e4e64a6a100614"
 dependencies = [
  "const-oid",
  "der",
@@ -351,9 +351,9 @@ dependencies = [
 
 [[package]]
 name = "der"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a878c850e9e421b20262e9b41f9c860e4785fa07541c266b62ff9d1ef998a80a"
+checksum = "6a996a108feb8b427a6e12fcf6af4aa83409b79d72c15337d7741368131ee004"
 dependencies = [
  "const-oid",
  "der_derive",
@@ -1216,7 +1216,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 [[package]]
 name = "pkiprocmacros"
 version = "0.1.2"
-source = "git+https://github.com/carl-wallace/rust-pki.git?branch=main#408d2f9a990455fdd498bf192efdcef9334c6f35"
+source = "git+https://github.com/carl-wallace/rust-pki.git?branch=main#99640ea0309ef8cefa3bf5e241ab939618cb8795"
 dependencies = [
  "quote",
  "syn 2.0.119",
@@ -2323,7 +2323,7 @@ dependencies = [
 [[package]]
 name = "x509-ocsp"
 version = "0.3.0-pre"
-source = "git+https://github.com/RustCrypto/formats.git#4994d934fb9e3aa9d6e0b3cd4e3b3ac3411d6aeb"
+source = "git+https://github.com/RustCrypto/formats.git#4c5fadb155ebc05c4a8a3abc05e4e64a6a100614"
 dependencies = [
  "const-oid",
  "der",
