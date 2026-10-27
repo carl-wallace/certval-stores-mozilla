@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 description = "Mozilla root program trust store for certval, generated from CCADB and verified against NSS certdata.txt"
 license = "MPL-2.0"
+repository = "https://github.com/carl-wallace/certval-stores-mozilla"
+# Only what the build reads, plus NOTICE: the sources, the README lib.rs takes its docs from, and
+# the embedded certificates and store. tests/ is read only by the tests and tools/ only by the
+# refresh, and the .der files under cas/ are the refresh's inputs for the .cbor beside them.
+include = ["src/**", "README.md", "roots/**/*.der", "cas/**/*.cbor", "LICENSE", "NOTICE"]
 
 [dependencies]
 # The provider trait and the certval/reqwest plumbing, shared with the
