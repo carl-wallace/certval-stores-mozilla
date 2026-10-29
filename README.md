@@ -2,12 +2,12 @@
 
 The Mozilla root program as a [`certval`](https://github.com/carl-wallace/rust-pki)
 trust store, implementing the `TrustStoreProvider` trait from
-[`certval_stores_core`](https://github.com/carl-wallace/certval-stores). It is a
+[`certval_stores_provider_core`](https://github.com/carl-wallace/certval-stores). It is a
 sibling of the `certval_stores_*` provider crates rather than a member of that
 workspace: the material is public web PKI on Mozilla's release cadence, and it
 carries an MPL-2.0 obligation the Federal/DoD providers do not.
 
-172 root certificates, embedded as DER at compile time. No network access, no
+Mozilla's root certificates, embedded as DER at compile time. No network access, no
 build script, no `certdata.txt` parsing at run time.
 
 ## What it provides
@@ -15,14 +15,15 @@ build script, no `certdata.txt` parsing at run time.
 Three environments, each behind a feature, plus an optional intermediate-CA
 store:
 
-| feature | environment | roots | population |
+| feature | constant (id) | roots | population |
 |---|---|---|---|
-| `mozilla_tls` (default) | `MOZILLA_TLS` | 121 | the Websites trust bit — TLS server authentication |
-| `mozilla_email` | `MOZILLA_EMAIL` | 91 | the Email trust bit — S/MIME |
-| `mozilla_all` | `MOZILLA_ALL` | 170 | either trust bit |
-| `mozilla_cas` | (adds the CA store to `MOZILLA_ALL`) | — | 2,563 intermediates, 3.9 MB |
+| `mozilla_tls` (default) | `MOZILLA_TLS` (`mozilla_tls`) | the Websites trust bit — TLS server authentication |
+| `mozilla_email` | `MOZILLA_EMAIL` (`mozilla_email`) | the Email trust bit — S/MIME |
+| `mozilla_all` | `MOZILLA_ALL` (`mozilla_all`) | either trust bit |
+| `mozilla_cas` | (adds the CA store to `MOZILLA_ALL`) | the CCADB-disclosed intermediates, several megabytes |
 
-```no_run
+```rust
+# #[cfg(feature = "mozilla_tls")] {
 use certval::{PkiEnvironment, TaSource};
 use certval_stores_core::prepare_certval_environment;
 
@@ -31,21 +32,21 @@ pe.populate_5280_pki_environment();
 let mut ta_store = TaSource::new();
 
 let providers = [certval_stores_mozilla::provider()];
-prepare_certval_environment(&providers, &mut pe, &mut ta_store, "MOZILLA_TLS")?;
+prepare_certval_environment(&providers, &mut pe, &mut ta_store, certval_stores_mozilla::MOZILLA_TLS)?;
+# }
 # Ok::<(), certval::Error>(())
 ```
 
-**Roots with no trust bits are not anchors.** Two of the 172 (`Go Daddy Class 2
-Certification Authority` and `Starfield Class 2 Certification Authority`) have
-every trust bit turned off: NSS still ships them, but Mozilla trusts them for
-nothing. They appear in `ROOTS` and in no environment. That is the 172 → 170
-gap in the table above.
+**Roots with no trust bits are not anchors.** Some roots (`Go Daddy Class 2
+Certification Authority` and `Starfield Class 2 Certification Authority` today)
+have every trust bit turned off: NSS still ships them, but Mozilla trusts them
+for nothing. They appear in `ROOTS` and in no environment.
 
 ## The intermediate-CA store
 
-`mozilla_cas` (off by default) embeds a certval `CertSource` — 2,563
-CCADB-disclosed intermediates plus the precomputed partial-path graph, 3.9 MB —
-and attaches it to `MOZILLA_ALL`.
+`mozilla_cas` (off by default) embeds a certval `CertSource` — the
+CCADB-disclosed intermediates plus the precomputed partial-path graph, several
+megabytes — and attaches it to `MOZILLA_ALL`.
 
 While it is true that in most web PKI scenarios an intermediate CA is supplied in-band, 
 TLS servers sometimes omit them; S/MIME message often carry only the signer certificate, 
@@ -54,11 +55,11 @@ Validating a certificate *file* is a a pittv3 use case. Without a preloaded stor
 those all depend on an AIA fetch, which needs the network and only works when the AIA 
 is present and reachable.
 
-CA certificates are only included in `MOZILLA_ALL` because the graph spans all 170 anchors, 
-and 85% of it is common to the two purpose-scoped environments. A pruned copy per
-environment would roughly triple 3.9 MB to buy very little. It cannot simply be
+CA certificates are only included in `MOZILLA_ALL` because the graph spans all the anchors,
+and most of it is common to the two purpose-scoped environments. A pruned copy per
+environment would roughly triple the store's size to buy very little. It cannot simply be
 shared either because the conformance suite requires every serialized path to start at
-a CA that the entry's anchors issued, and 356 of these chain only to email-only
+a CA that the entry's anchors issued, and many of these chain only to email-only
 roots, so including this graph in `MOZILLA_TLS` would cause those to be reported
 as unanchored.
 
@@ -107,19 +108,39 @@ Salesforce, and `ccadb.my.salesforce-sites.com` is its Salesforce Sites domain.
 It replaced the older `ccadb-public.secure.force.com`, `force.com` being the
 same platform under its retired name. Mozilla's own wiki is what names it.
 
-That is still a report rather than the store, so the material is checked against
-the store itself:
+**CCADB is the authoritative source.** The roots, their trust bits and their
+distrust dates come from its report. NSS's `certdata.txt`, the built-in object
+table Firefox ships, serves as a consistency check rather than a second source:
 
 ```sh
 python3 tools/verify_against_nss.py
 ```
 
-This parses the PKCS #11 built-in object table in **NSS's `certdata.txt`** — what
-Firefox actually ships — and compares it to both the CCADB report and the DER
-embedded here: same certificates, byte for byte, and the same trust bits derived
-from `CKA_TRUST_SERVER_AUTH` / `CKA_TRUST_EMAIL_PROTECTION`. As of the
-2026-08-13 snapshot the three agree exactly, with zero disagreements across all
-172 certificates. Run it any time to detect drift; CI runs it on a schedule.
+This compares NSS's certificates with the certificates embedded here, byte for
+byte, and NSS's trust bits (`CKA_TRUST_SERVER_AUTH` /
+`CKA_TRUST_EMAIL_PROTECTION`) with the trust bits in the CCADB report. CCADB
+records a Mozilla decision before NSS carries it, so the two can disagree for a
+while after a change; when they do, this crate follows CCADB, and the check
+reports the disagreement for a person to look at. On 2026-10-28 they agreed on every certificate and every trust bit. CI runs the check on a schedule.
+
+## Versioning
+
+This crate follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and the version
+number also says what changed in the trust material:
+
+- A **patch** release (1.0.0 to 1.0.1) changes intermediate CA certificates, partial paths, or a
+  store's dates or label. No store's trust anchors change.
+- A **minor** release (1.0.x to 1.1.0) adds or removes trust anchors in a store, adds a store, or
+  adds to the API without breaking code that uses it.
+- A **major** release (1.x to 2.0.0) changes the API in a way that breaks code that uses it, for
+  example by removing a store along with its feature and constant.
+
+With an ordinary requirement such as `certval_stores_mozilla = "1.0"`, `cargo update` takes every
+1.x release, including a minor release that adds or removes trust anchors. With
+`certval_stores_mozilla = "~1.0"`, `cargo update` takes 1.0.1, 1.0.2 and so on, which change only
+intermediate CA certificates, partial paths or dates, and does not take 1.1.0, so the trust anchors
+stay those of 1.0 until the requirement is changed to `~1.1`. Each release's changes are listed in
+`CHANGELOG.md`.
 
 ## Refreshing
 
@@ -130,7 +151,7 @@ python3 tools/verify_against_nss.py
 cargo test --all-features
 ```
 
-`refresh_cas.py` needs `certval-store-gen` (RedHoundSoftware) built and on PATH,
+`refresh_cas.py` needs `certval-store-gen` (from `carl-wallace/certval-stores`) built and on PATH,
 or named with `--store-gen`; it must run after `refresh.py`, since it derives the
 anchor set from the roots that wrote.
 
@@ -156,13 +177,13 @@ untrusted roots included.
 
 ## Size
 
-The 172 root DER files total ~690 KB and are all embedded regardless of which
+The root DER files total under a megabyte and are all embedded regardless of which
 environment features are on, because `ROOTS` covers the whole snapshot. Feature
 selection picks which of them become trust anchors, not which are compiled in —
-gating the bytes would save little, since 170 of the 172 are in `MOZILLA_ALL`
+gating the bytes would save little, since nearly all of them are in `MOZILLA_ALL`
 anyway.
 
-`mozilla_cas` adds 3.9 MB, which is why it is off by default and why the wasm
+`mozilla_cas` adds several megabytes, which is why it is off by default and why the wasm
 and MSRV CI legs build without it. A size-constrained consumer that only wants
 TLS anchors and can live without the metadata should take
 `certval::TaSource::new_from_webpki` instead.

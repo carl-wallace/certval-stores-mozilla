@@ -5,12 +5,13 @@
 
 """Cross-check the embedded material against NSS's own certdata.txt.
 
-`tools/refresh.py` generates this crate from a CCADB report. CCADB is the
-database the Mozilla CA program administers, but it is a *rendering* of the
-store rather than the store: what Firefox actually ships is the PKCS #11
-built-in object table in `certdata.txt`, in the NSS source tree. This checks one
-against the other — same certificates, byte for byte, and the same trust bits —
-so the provenance of the embedded roots does not rest on trusting a report URL.
+`tools/refresh.py` generates this crate from a CCADB report, and CCADB is the
+source this crate treats as authoritative. What Firefox ships is the PKCS #11
+built-in object table in `certdata.txt`, in the NSS source tree, which carries a
+Mozilla decision some time after CCADB records it. This compares the two -- the
+embedded certificates with NSS's, byte for byte, and the CCADB report's trust bits
+with NSS's -- as a consistency check: a disagreement is usually a decision NSS has
+not picked up yet, and occasionally a mistake in one of them.
 
     python3 tools/verify_against_nss.py
 

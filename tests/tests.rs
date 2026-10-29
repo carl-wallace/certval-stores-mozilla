@@ -15,7 +15,7 @@ use std::collections::BTreeSet;
 
 use certval::{Error, PkiEnvironment, TaSource};
 use certval_stores_core::{conformance, prepare_certval_environment, TrustStoreProvider};
-use certval_stores_mozilla::{find_by_sha256, ALL_ROOTS, EMAIL_ROOTS, PROVIDER, ROOTS, TLS_ROOTS};
+use certval_stores_mozilla::{find_by_sha256, provider, ALL_ROOTS, EMAIL_ROOTS, ROOTS, TLS_ROOTS};
 
 /// Counts from the embedded snapshot. To update every pinned constant here:
 /// `UPDATE_PINS=1 cargo test --all-features` (see `certval_stores_core::conformance::check_pin`).
@@ -130,7 +130,7 @@ fn untrusted_roots_are_in_the_table_but_in_no_environment() {
     assert_eq!(untrusted.len(), ROOTS.len() - ALL_ROOTS.len());
     for root in untrusted {
         assert!(!ALL_ROOTS.contains(&root.der), "{}", root.common_name);
-        for entry in PROVIDER.entries() {
+        for entry in provider().entries() {
             assert!(
                 !entry.roots.contains(&root.der),
                 "{} appears in {}",
@@ -207,7 +207,7 @@ fn prepare_environment_accepts_mozilla_tls() {
         &providers(),
         &mut pe,
         &mut ta_store,
-        certval_stores_mozilla::TLS,
+        certval_stores_mozilla::MOZILLA_TLS,
     )
     .expect("the TLS store id must be recognized");
     certval_stores_core::pin!(EXPECTED_TLS, ta_store.len());
@@ -228,7 +228,7 @@ fn prepare_environment_accepts_mozilla_email() {
         &providers(),
         &mut pe,
         &mut ta_store,
-        certval_stores_mozilla::EMAIL,
+        certval_stores_mozilla::MOZILLA_EMAIL,
     )
     .expect("the S/MIME store id must be recognized");
     certval_stores_core::pin!(EXPECTED_EMAIL, ta_store.len());
@@ -249,7 +249,7 @@ fn prepare_environment_accepts_mozilla_all() {
         &providers(),
         &mut pe,
         &mut ta_store,
-        certval_stores_mozilla::ALL,
+        certval_stores_mozilla::MOZILLA_ALL,
     )
     .expect("the combined store id must be recognized");
     certval_stores_core::pin!(EXPECTED_ALL, ta_store.len());
@@ -266,9 +266,9 @@ fn prepare_environment_rejects_unknown_environment() {
 }
 
 /// The purpose-scoped environments are anchors-only: the CA store is one graph
-/// over all 170 anchors, and attaching it to a 121- or 91-anchor entry would
+/// over all the anchors, and attaching it to a purpose-scoped entry would
 /// leave paths that no anchor of that entry can terminate. `MOZILLA_ALL` is
-/// where it hangs; see the `MozillaStores` docs.
+/// where it hangs; see the `provider` docs.
 #[test]
 fn only_mozilla_all_carries_a_ca_store() {
     // The id constant exists only with the feature that carries the store, which is
@@ -276,14 +276,14 @@ fn only_mozilla_all_carries_a_ca_store() {
     // entry either, so nothing is being skipped here.
     #[cfg(feature = "mozilla_all")]
     fn is_combined(id: &str) -> bool {
-        id == certval_stores_mozilla::ALL
+        id == certval_stores_mozilla::MOZILLA_ALL
     }
     #[cfg(not(feature = "mozilla_all"))]
     fn is_combined(_id: &str) -> bool {
         false
     }
 
-    for entry in &PROVIDER.entries() {
+    for entry in &provider().entries() {
         assert!(!entry.roots.is_empty());
         let expected = is_combined(entry.id) && cfg!(feature = "mozilla_cas");
         assert_eq!(

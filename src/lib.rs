@@ -1,14 +1,39 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
 #![doc = include_str!("../README.md")]
 
+// With no environment feature on, nothing reads the snapshot date, the one item here
+// that is not public.
+#[cfg_attr(
+    not(any(
+        feature = "mozilla_tls",
+        feature = "mozilla_email",
+        feature = "mozilla_all"
+    )),
+    allow(dead_code)
+)]
 mod generated;
 
-pub use generated::{ALL_ROOTS, CCADB_REPORT_URL, EMAIL_ROOTS, ROOTS, SNAPSHOT_DATE, TLS_ROOTS};
+pub use generated::{ALL_ROOTS, CCADB_REPORT_URL, EMAIL_ROOTS, ROOTS, TLS_ROOTS};
 
-use certval_stores_core::{StoreEntry, TrustStoreProvider};
+#[cfg(any(
+    feature = "mozilla_tls",
+    feature = "mozilla_email",
+    feature = "mozilla_all"
+))]
+use certval_stores_provider_core::Date;
+use certval_stores_provider_core::{StoreEntry, TrustStoreProvider};
+
+// The generated snapshot date, checked when the crate builds.
+#[cfg(any(
+    feature = "mozilla_tls",
+    feature = "mozilla_email",
+    feature = "mozilla_all"
+))]
+const COLLECTED: Date = Date::parse(generated::SNAPSHOT_DATE)
+    .expect("generated SNAPSHOT_DATE is not a YYYY-MM-DD date");
 
 /// One root from Mozilla's included-CA report, with the metadata CCADB
 /// publishes beside it.
@@ -104,16 +129,14 @@ pub fn find_by_sha256(fingerprint: &str) -> Option<&'static MozillaRoot> {
 /// off.
 ///
 /// Every intermediate CCADB discloses under the Mozilla program that chains to
-/// an embedded root: 2,560 certificates, 6.6 MB. It is what lets a path build
+/// an embedded root, several megabytes in all. It is what lets a path build
 /// offline, with no AIA fetch and no chain from a peer — which is the normal
 /// case for pittv3-style validation of a certificate file, for a TLS server
 /// that sends an incomplete chain, and for an S/MIME message or a client-auth
 /// handshake where the signer certificate arrives with no issuers at all.
 ///
 /// Exposed so a consumer can build its own `CertSource::new_from_cbor` rather
-/// than going through [`prepare_certval_environment`].
-///
-/// [`prepare_certval_environment`]: certval_stores_core::prepare_certval_environment
+/// than going through `certval_stores_core::prepare_certval_environment`.
 #[cfg(feature = "mozilla_cas")]
 pub const CA_STORE: Option<&'static [u8]> = Some(include_bytes!("../cas/mozilla/mozilla.cbor"));
 
@@ -121,9 +144,62 @@ pub const CA_STORE: Option<&'static [u8]> = Some(include_bytes!("../cas/mozilla/
 #[cfg(not(feature = "mozilla_cas"))]
 pub const CA_STORE: Option<&'static [u8]> = None;
 
-/// Trust-store provider for the Mozilla root program.
+struct MozillaStores;
+
+/// Store id for the Mozilla TLS-only root set, to pass to `prepare_certval_environment` or
+/// `serialize_environment` rather than spelling it out: the parameter is a
+/// `&str`, so a stale literal compiles and fails at run time.
+#[cfg(feature = "mozilla_tls")]
+pub const MOZILLA_TLS: &str = "mozilla_tls";
+
+/// Store id for the Mozilla S/MIME-only root set, to pass to `prepare_certval_environment` or
+/// `serialize_environment` rather than spelling it out: the parameter is a
+/// `&str`, so a stale literal compiles and fails at run time.
+#[cfg(feature = "mozilla_email")]
+pub const MOZILLA_EMAIL: &str = "mozilla_email";
+
+/// Store id for the combined Mozilla root set with CCADB intermediates, to pass to `prepare_certval_environment` or
+/// `serialize_environment` rather than spelling it out: the parameter is a
+/// `&str`, so a stale literal compiles and fails at run time.
+#[cfg(feature = "mozilla_all")]
+pub const MOZILLA_ALL: &str = "mozilla_all";
+
+impl TrustStoreProvider for MozillaStores {
+    #[allow(unused_mut, clippy::vec_init_then_push)]
+    fn entries(&self) -> Vec<StoreEntry> {
+        let mut entries = Vec::new();
+        #[cfg(feature = "mozilla_tls")]
+        entries.push(
+            StoreEntry::new(MOZILLA_TLS, "Web PKI (Mozilla roots, TLS only)", TLS_ROOTS)
+                .with_collected(COLLECTED),
+        );
+        #[cfg(feature = "mozilla_email")]
+        entries.push(
+            StoreEntry::new(
+                MOZILLA_EMAIL,
+                "Web PKI (Mozilla roots, S/MIME only)",
+                EMAIL_ROOTS,
+            )
+            .with_collected(COLLECTED),
+        );
+        #[cfg(feature = "mozilla_all")]
+        {
+            let mut all = StoreEntry::new(
+                MOZILLA_ALL,
+                "Web PKI (Mozilla roots, TLS + S/MIME, + CCADB intermediates)",
+                ALL_ROOTS,
+            )
+            .with_collected(COLLECTED);
+            all.cert_store_cbor = CA_STORE;
+            entries.push(all);
+        }
+        entries
+    }
+}
+
+/// The trust-store provider for the Mozilla root program.
 ///
-/// Every entry reports [`SNAPSHOT_DATE`] as its collection date and no publication
+/// Every entry reports the snapshot date as its collection date and no publication
 /// date. The report is a live query rather than a dated release — CCADB answers with
 /// whatever it holds at the moment it is asked — so the day `tools/refresh.py` ran is
 /// the only date there is, and claiming it as a publication date would dress a fetch
@@ -134,8 +210,8 @@ pub const CA_STORE: Option<&'static [u8]> = None;
 /// [`CA_STORE`] when the `mozilla_cas` feature is on.
 ///
 /// **Why the CA store hangs off `MOZILLA_ALL` alone.** The store is one graph
-/// over all 170 anchors, and 85% of it is common to the two purpose-scoped
-/// environments — shipping a pruned copy for each would triple 6.6 MB to buy
+/// over all the anchors, and most of it is common to the two purpose-scoped
+/// environments — shipping a pruned copy for each would triple its size to buy
 /// almost nothing. It cannot simply be shared: the conformance suite requires
 /// every serialized path to start at a CA the *entry's own* anchors issued, and
 /// 356 of these chain only to email-only roots, so attaching this graph to
@@ -150,66 +226,8 @@ pub const CA_STORE: Option<&'static [u8]> = None;
 /// [`distrust_for_tls_after`](MozillaRoot::distrust_for_tls_after). A consumer
 /// that would rather have the anchor set enforce the purpose takes
 /// `MOZILLA_TLS` or `MOZILLA_EMAIL` and supplies intermediates itself.
-pub struct MozillaStores;
-
-/// Store id for the Mozilla TLS-only root set, to pass to `prepare_certval_environment` or
-/// `serialize_environment` rather than spelling it out: the parameter is a
-/// `&str`, so a stale literal compiles and fails at run time.
-#[cfg(feature = "mozilla_tls")]
-pub const TLS: &str = "webpki_tls";
-
-/// Store id for the Mozilla S/MIME-only root set, to pass to `prepare_certval_environment` or
-/// `serialize_environment` rather than spelling it out: the parameter is a
-/// `&str`, so a stale literal compiles and fails at run time.
-#[cfg(feature = "mozilla_email")]
-pub const EMAIL: &str = "webpki_email";
-
-/// Store id for the combined Mozilla root set with CCADB intermediates, to pass to `prepare_certval_environment` or
-/// `serialize_environment` rather than spelling it out: the parameter is a
-/// `&str`, so a stale literal compiles and fails at run time.
-#[cfg(feature = "mozilla_all")]
-pub const ALL: &str = "webpki";
-
-impl TrustStoreProvider for MozillaStores {
-    #[allow(unused_mut, clippy::vec_init_then_push)]
-    fn entries(&self) -> Vec<StoreEntry> {
-        let mut entries = Vec::new();
-        #[cfg(feature = "mozilla_tls")]
-        entries.push(StoreEntry {
-            id: TLS,
-            label: "Web PKI (Mozilla roots, TLS only)",
-            roots: TLS_ROOTS,
-            cert_store_cbor: None,
-            published: None,
-            collected: Some(SNAPSHOT_DATE),
-        });
-        #[cfg(feature = "mozilla_email")]
-        entries.push(StoreEntry {
-            id: EMAIL,
-            label: "Web PKI (Mozilla roots, S/MIME only)",
-            roots: EMAIL_ROOTS,
-            cert_store_cbor: None,
-            published: None,
-            collected: Some(SNAPSHOT_DATE),
-        });
-        #[cfg(feature = "mozilla_all")]
-        entries.push(StoreEntry {
-            id: ALL,
-            label: "Web PKI (Mozilla roots, TLS + S/MIME, + CCADB intermediates)",
-            roots: ALL_ROOTS,
-            cert_store_cbor: CA_STORE,
-            published: None,
-            collected: Some(SNAPSHOT_DATE),
-        });
-        entries
-    }
-}
-
-/// The provider instance.
-pub static PROVIDER: MozillaStores = MozillaStores;
-
-/// Convenience accessor returning the provider as a trait object, for adding to
-/// a provider list passed to `certval_stores_core`.
+///
+/// Add it to the list of providers passed to `certval_stores_core`.
 pub fn provider() -> &'static dyn TrustStoreProvider {
-    &PROVIDER
+    &MozillaStores
 }

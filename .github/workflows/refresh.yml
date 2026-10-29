@@ -104,7 +104,11 @@ jobs:
           # The whole log, indented as a code block: each count is followed by the lines that
           # account for it (the roots with no trust bits, every intermediate omitted or removed),
           # and a filter on the text keeps some of those lines and drops others.
-          sed 's/^/    /' refresh.log > "$RUNNER_TEMP/body.md"
+          # The version bump this calls for under the Versioning rule in the README, first in the
+          # description, since batched releases take the largest one merged since the last.
+          bash .github/scripts/suggested-bump.sh > "$RUNNER_TEMP/body.md"
+          echo >> "$RUNNER_TEMP/body.md"
+          sed 's/^/    /' refresh.log >> "$RUNNER_TEMP/body.md"
           # The anchors added, removed or replaced, by subject. Empty when no root moved.
           roots="$(bash .github/scripts/roots-diff.sh .)"
           cat >> "$RUNNER_TEMP/body.md" <<EOF
