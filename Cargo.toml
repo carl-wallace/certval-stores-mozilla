@@ -49,16 +49,6 @@ mozilla_all = []
 # for why it is not offered per purpose.
 mozilla_cas = ["mozilla_all"]
 
-# `certval` and its RustCrypto dependencies are consumed from git, so this patch
-# table is required for this crate to build standalone (its own CI). When it is
-# consumed by a larger workspace, that workspace's own [patch] table governs and
-# this one is ignored. Only the formats 0.3-pre line lacks a crates.io release
-# and is internally git-coupled (cms/x509-cert/x509-ocsp pin the stack
-# together), so it stays on git.
-[patch.crates-io]
-cms        = { git = "https://github.com/RustCrypto/formats.git" }
-x509-ocsp  = { git = "https://github.com/RustCrypto/formats.git" }
-
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
