@@ -1,5 +1,8 @@
 # certval_stores_mozilla
 
+![MPL-2.0 licensed][license-image]
+![Rust Version][rustc-image]
+
 The Mozilla root program as a [`certval`](https://github.com/carl-wallace/rust-pki)
 trust store, implementing the `TrustStoreProvider` trait from
 [`certval_stores_provider_core`](https://github.com/carl-wallace/certval-stores). It is a
@@ -189,3 +192,6 @@ TLS anchors and can live without the metadata should take
 ## License
 
 MPL-2.0, following the Mozilla CA certificate data it embeds.
+
+[license-image]: https://img.shields.io/badge/license-MPL--2.0-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.88+-blue.svg
