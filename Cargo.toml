@@ -1,28 +1,29 @@
 [package]
 name = "certval_stores_mozilla"
-version = "0.1.0"
+version = "1.0.0-rc.1"
 edition = "2021"
-description = "Mozilla root program trust store for certval, generated from CCADB and verified against NSS certdata.txt"
+rust-version = "1.88"
+description = "Mozilla root program trust store for certval, generated from the CCADB report Mozilla publishes"
+keywords = ["x509", "pki", "trust-anchor", "mozilla", "ccadb"]
+categories = ["cryptography"]
 license = "MPL-2.0"
 repository = "https://github.com/carl-wallace/certval-stores-mozilla"
-# Only what the build reads, plus NOTICE: the sources, the README lib.rs takes its docs from, and
-# the embedded certificates and store. tests/ is read only by the tests and tools/ only by the
-# refresh, and the .der files under cas/ are the refresh's inputs for the .cbor beside them.
-include = ["src/**", "README.md", "roots/**/*.der", "cas/**/*.cbor", "LICENSE", "NOTICE"]
+# What the build reads, plus NOTICE and the changelog: the sources, the README lib.rs takes its docs
+# from, and the embedded certificates and store. tests/ is read only by the tests and tools/ only by
+# the refresh, and the .der files under cas/ are the refresh's inputs for the .cbor beside them.
+include = ["src/**", "README.md", "CHANGELOG.md", "roots/**/*.der", "cas/**/*.cbor", "LICENSE", "NOTICE"]
 
 [dependencies]
-# The provider trait and the certval/reqwest plumbing, shared with the
-# certval_stores_* family. default-features = false keeps the HTTP stack behind
-# this crate's own `reqwest-client` switch.
-certval_stores_core = { git = "https://github.com/carl-wallace/certval-stores.git", default-features = false, branch = "main" }
+# The StoreEntry type and TrustStoreProvider trait, shared with the certval_stores_* family.
+certval_stores_provider_core = { git = "https://github.com/carl-wallace/certval-stores.git", version = "1.0.0-rc.1", branch = "main" }
 
 [dev-dependencies]
-# default-features = false for the same reason as the dependency above: certval's
+# default-features = false for the same reason as the core crate: certval's
 # defaults pull reqwest, and a dev-dependency taking them puts the HTTP stack
-# back into the test graph however `reqwest-client` is configured, so a
+# back into the test graph however core's client features are configured, so a
 # --no-default-features test run would not build the shape it claims to.
 certval_stores_core = { git = "https://github.com/carl-wallace/certval-stores.git", default-features = false, features = ["test-util"], branch = "main" }
-# `rsa` because 118 of the 172 roots are RSA-signed: without it certval's
+# `rsa` because most of the roots are RSA-signed: without it certval's
 # signature verification returns Unrecognized rather than failing loudly, and
 # the conformance suite would pass while checking nothing.
 certval = { git = "https://github.com/carl-wallace/rust-pki.git", default-features = false, features = ["rsa"], branch = "main" }
@@ -32,11 +33,7 @@ const-oid = { version = "0.10.2", features = ["db"] }
 sha2 = "0.11.0"
 
 [features]
-default = ["mozilla_tls", "reqwest-client"]
-# Forwards the core crate's client switch. Without this a consumer could not
-# turn the HTTP stack off: features are additive, so this crate enabling the
-# core default would re-enable it however the consumer configured core.
-reqwest-client = ["certval_stores_core/reqwest-client"]
+default = ["mozilla_tls"]
 # Roots carrying the Websites trust bit — TLS server authentication. The same
 # population webpki-roots serves.
 mozilla_tls = []
@@ -45,19 +42,13 @@ mozilla_email = []
 # Every root Mozilla trusts for either purpose, in one environment, for a
 # consumer that validates both kinds of certificate against one anchor set.
 mozilla_all = []
-# Embed the intermediate-CA store: 2,560 CCADB-disclosed intermediates plus the
+# Embed the intermediate-CA store: the CCADB-disclosed intermediates plus the
 # precomputed partial-path graph, so paths build offline with no AIA fetch and
-# no chain from a peer. 6.6 MB, hence off by default. Implies `mozilla_all`
-# because that is the environment it attaches to — see the MozillaStores docs
+# no chain from a peer. Several megabytes, hence off by default. Implies `mozilla_all`
+# because that is the environment it attaches to — see the provider() docs
 # for why it is not offered per purpose.
 mozilla_cas = ["mozilla_all"]
 
-# `certval` and its RustCrypto dependencies are consumed from git, so this patch
-# table is required for this crate to build standalone (its own CI). When it is
-# consumed by a larger workspace, that workspace's own [patch] table governs and
-# this one is ignored. Only the formats 0.3-pre line lacks a crates.io release
-# and is internally git-coupled (cms/x509-cert/x509-ocsp pin the stack
-# together), so it stays on git.
-[patch.crates-io]
-cms        = { git = "https://github.com/RustCrypto/formats.git" }
-x509-ocsp  = { git = "https://github.com/RustCrypto/formats.git" }
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

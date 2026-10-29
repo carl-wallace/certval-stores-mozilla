@@ -46,7 +46,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       # --all-features is the only leg that exercises the CA store against every
       # environment at once, and the only one that runs the two expensive checks:
-      # a path built for each of the 2,560 intermediates, and each of those
+      # a path built for each of the intermediates, and each of those
       # validated from the anchor down.
       - run: cargo test --all-features
 
@@ -61,7 +61,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      # Deliberately without mozilla_cas: the CA store is 6.6 MB, which is not a
+      # Deliberately without mozilla_cas: the CA store is several megabytes, which is not a
       # payload to put in a wasm bundle. The anchors-only shape is what that
       # consumer builds.
       - run: cargo build --no-default-features --features mozilla_tls --target wasm32-unknown-unknown
