@@ -13,7 +13,7 @@
 
 use std::collections::BTreeSet;
 
-use certval::{Error, PkiEnvironment, TaSource};
+use certval::{Error, PkiEnvironment};
 use certval_stores_core::{conformance, prepare_certval_environment, TrustStoreProvider};
 use certval_stores_mozilla::{find_by_sha256, provider, ALL_ROOTS, EMAIL_ROOTS, ROOTS, TLS_ROOTS};
 
@@ -195,73 +195,38 @@ fn out_of_band_policy_is_carried_through() {
 #[test]
 #[cfg(feature = "mozilla_tls")]
 fn prepare_environment_accepts_mozilla_tls() {
-    // Brings TaSource::len() into scope; kept local so the module compiles
-    // with no features enabled.
-    use certval::CertVector;
-
     let mut pe = PkiEnvironment::default();
     pe.populate_5280_pki_environment();
-    let mut ta_store = TaSource::new();
-
-    prepare_certval_environment(
-        &providers(),
-        &mut pe,
-        &mut ta_store,
-        certval_stores_mozilla::MOZILLA_TLS,
-    )
-    .expect("the TLS store id must be recognized");
-    certval_stores_core::pin!(EXPECTED_TLS, ta_store.len());
+    prepare_certval_environment(&providers(), &mut pe, certval_stores_mozilla::MOZILLA_TLS)
+        .expect("the TLS store id must be recognized");
+    certval_stores_core::pin!(EXPECTED_TLS, pe.get_trust_anchors().len());
 }
 
 #[test]
 #[cfg(feature = "mozilla_email")]
 fn prepare_environment_accepts_mozilla_email() {
-    // Brings TaSource::len() into scope; kept local so the module compiles
-    // with no features enabled.
-    use certval::CertVector;
-
     let mut pe = PkiEnvironment::default();
     pe.populate_5280_pki_environment();
-    let mut ta_store = TaSource::new();
-
-    prepare_certval_environment(
-        &providers(),
-        &mut pe,
-        &mut ta_store,
-        certval_stores_mozilla::MOZILLA_EMAIL,
-    )
-    .expect("the S/MIME store id must be recognized");
-    certval_stores_core::pin!(EXPECTED_EMAIL, ta_store.len());
+    prepare_certval_environment(&providers(), &mut pe, certval_stores_mozilla::MOZILLA_EMAIL)
+        .expect("the S/MIME store id must be recognized");
+    certval_stores_core::pin!(EXPECTED_EMAIL, pe.get_trust_anchors().len());
 }
 
 #[test]
 #[cfg(feature = "mozilla_all")]
 fn prepare_environment_accepts_mozilla_all() {
-    // Brings TaSource::len() into scope; kept local so the module compiles
-    // with no features enabled.
-    use certval::CertVector;
-
     let mut pe = PkiEnvironment::default();
     pe.populate_5280_pki_environment();
-    let mut ta_store = TaSource::new();
-
-    prepare_certval_environment(
-        &providers(),
-        &mut pe,
-        &mut ta_store,
-        certval_stores_mozilla::MOZILLA_ALL,
-    )
-    .expect("the combined store id must be recognized");
-    certval_stores_core::pin!(EXPECTED_ALL, ta_store.len());
+    prepare_certval_environment(&providers(), &mut pe, certval_stores_mozilla::MOZILLA_ALL)
+        .expect("the combined store id must be recognized");
+    certval_stores_core::pin!(EXPECTED_ALL, pe.get_trust_anchors().len());
 }
 
 #[test]
 fn prepare_environment_rejects_unknown_environment() {
     let mut pe = PkiEnvironment::default();
     pe.populate_5280_pki_environment();
-    let mut ta_store = TaSource::new();
-
-    let r = prepare_certval_environment(&providers(), &mut pe, &mut ta_store, "not_a_store_id");
+    let r = prepare_certval_environment(&providers(), &mut pe, "not_a_store_id");
     assert!(matches!(r, Err(Error::Unrecognized)));
 }
 

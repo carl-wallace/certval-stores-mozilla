@@ -24,15 +24,13 @@ store:
 
 ```rust
 # #[cfg(feature = "mozilla_tls")] {
-use certval::{PkiEnvironment, TaSource};
+use certval::PkiEnvironment;
 use certval_stores_core::prepare_certval_environment;
 
 let mut pe = PkiEnvironment::default();
 pe.populate_5280_pki_environment();
-let mut ta_store = TaSource::new();
-
 let providers = [certval_stores_mozilla::provider()];
-prepare_certval_environment(&providers, &mut pe, &mut ta_store, certval_stores_mozilla::MOZILLA_TLS)?;
+prepare_certval_environment(&providers, &mut pe, certval_stores_mozilla::MOZILLA_TLS)?;
 # }
 # Ok::<(), certval::Error>(())
 ```
