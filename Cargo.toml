@@ -2,7 +2,7 @@
 name = "certval_stores_mozilla"
 version = "1.0.0-rc.1"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.89"
 description = "Mozilla root program trust store for certval, generated from the CCADB report Mozilla publishes"
 keywords = ["x509", "pki", "trust-anchor", "mozilla", "ccadb"]
 categories = ["cryptography"]
