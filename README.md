@@ -194,4 +194,4 @@ TLS anchors and can live without the metadata should take
 MPL-2.0, following the Mozilla CA certificate data it embeds.
 
 [license-image]: https://img.shields.io/badge/license-MPL--2.0-blue.svg
-[rustc-image]: https://img.shields.io/badge/rustc-1.88+-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.89+-blue.svg
