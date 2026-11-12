@@ -26,7 +26,7 @@ certval_stores_core = { version = "0.1.0-rc.1", default-features = false, featur
 # `rsa` because most of the roots are RSA-signed: without it certval's
 # signature verification returns Unrecognized rather than failing loudly, and
 # the conformance suite would pass while checking nothing.
-certval = { version = "0.2.0-rc.1", default-features = false, features = ["rsa"] }
+certval = { version = "0.2.0-rc.3", default-features = false, features = ["rsa"] }
 # Versions tracked to certval's, so the OIDs and digests the tests use are the
 # same types certval works with rather than a second copy of them.
 const-oid = { version = "0.10.2", features = ["db"] }
